@@ -33,7 +33,8 @@ func (t *TaskRunner) Wait() {
 	t.waitGroup.Wait()
 }
 
-// Run a new task. The task will run in a goroutine, and receive a context.
+// Run starts a new task. The task will run in a goroutine, and receive a
+// context.
 func (t *TaskRunner) Run(name string, fn func(context.Context)) {
 	t.waitGroup.Add(1)
 
@@ -45,4 +46,27 @@ func (t *TaskRunner) Run(name string, fn func(context.Context)) {
 		log.Debugf("Starting task '%s'.", name)
 		fn(t.ctx)
 	}()
+}
+
+// RunWithError starts a new task. The task will run in a goroutine, and
+// receive a context. If the task returns an error, the task runner will be
+// cancelled.
+func (t *TaskRunner) RunWithError(name string, fn func(context.Context) error) {
+	t.Run(name, func(ctx context.Context) {
+		err := fn(ctx)
+
+		if err != nil {
+			log.Errorf("Task '%s' failed with error: %v", name, err)
+			t.cancel()
+		}
+	})
+}
+
+// RunWithCancel starts a new task. The task will run in a goroutine, and
+// receive a context. If the task returns, the task runner will be cancelled.
+func (t *TaskRunner) RunWithCancel(name string, fn func(context.Context)) {
+	t.Run(name, func(ctx context.Context) {
+		fn(ctx)
+		t.cancel()
+	})
 }
